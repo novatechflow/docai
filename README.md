@@ -43,6 +43,26 @@ python pdf_viewer_app.py
 - Chat: build a quick FAISS index over a chosen Markdown file and query it with a selected HF model (remote endpoint or local HF pipeline).
 - Settings: set HF token, optional custom endpoints (OCR/embeddings/LLM), model choices, and output directory. Settings persist to `~/.docai/config.json`. Env vars (`HF_TOKEN`, `HUGGINGFACEHUB_API_TOKEN`, `DOC_AI_OUTPUT_DIR`) are auto-read.
 
+### Triaging a mixed file tree
+
+Before OCR/indexing a large, untrusted pile of files, separate real documents
+from media, archives, and renamed binaries. Classification checks each file two
+ways — extension *and* detected content type — and only keeps a file when both
+agree; anything that disagrees, is empty, unreadable, or unexpectedly large is
+quarantined for review rather than fed downstream.
+
+```bash
+docai-classify /path/to/tree --manifest manifest.json --doc-list docs.txt
+```
+
+- `--manifest`: JSON report with per-file verdicts, reasons, and byte/count totals.
+- `--doc-list`: newline-separated paths of the kept documents, ready to pipe into OCR.
+
+Kept types: `.pdf .doc .docx .rtf .odt .txt .md`. Content detection uses
+`python-magic` (`pip install ".[classify]"`) when available, then the system
+`file` command, then a built-in signature sniff — so it runs with no extra deps
+but is more precise with libmagic installed.
+
 ### Hugging Face onboarding (fast path)
 
 1. Create a Hugging Face access token: https://huggingface.co/settings/tokens (choose “Read” or “Write” as needed).

@@ -41,8 +41,11 @@ llm = [
   "accelerate>=1.10,<2",
   "bitsandbytes>=0.42,<1",
 ]
+classify = [
+  "python-magic>=0.4.27,<0.5",
+]
 all = [
-  "docai-toolkit[ocr,rag,llm]",
+  "docai-toolkit[ocr,rag,llm,classify]",
 ]
 dev = [
   "docai-toolkit[ocr,rag,llm]",
@@ -60,3 +63,4 @@ include = ["docai_toolkit*"]
 
 [project.scripts]
 docai-viewer = "pdf_viewer_app:main"
+docai-classify = "docai_toolkit.classify:main"
