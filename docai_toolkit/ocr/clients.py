@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from docai_toolkit.hf_client import HuggingFaceClient
+from docai_toolkit.http_client import HttpClient
 
 
 @dataclass
@@ -21,14 +21,19 @@ class OcrClient(ABC):
 
 
 class RemoteOcrClient(OcrClient):
-    """Generic OCR via a Hugging Face Inference or custom endpoint."""
+    """OCR via a custom endpoint that accepts a PDF body and returns text.
+
+    OCR has no OpenAI-standard route, so this posts the raw PDF to a
+    user-configured endpoint and accepts a few common response shapes.
+    """
 
     def __init__(self, api_key: Optional[str], endpoint: str) -> None:
-        self.client = HuggingFaceClient(api_key, default_endpoint=endpoint)
+        self.endpoint = endpoint
+        self.client = HttpClient(api_key=api_key)
 
     def recognize(self, pdf_path: Path) -> List[PageResult]:
         pdf_bytes = pdf_path.read_bytes()
-        response = self.client.post_json(pdf_bytes, content_type="application/pdf")
+        response = self.client.post(self.endpoint, pdf_bytes, content_type="application/pdf")
 
         if isinstance(response, str):
             pages = [response]

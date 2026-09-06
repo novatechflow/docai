@@ -5,41 +5,40 @@ pytest.importorskip("langchain")
 from docai_toolkit.rag.index import RemoteEmbeddings, load_index
 
 
-class DummyClient:
-    def __init__(self, responses):
-        self.responses = responses
-        self.calls = 0
+class DummyOpenAIClient:
+    def __init__(self, *_, **__):
+        self.embed_calls = []
 
-    def post_json(self, *_, **__):
-        self.calls += 1
-        return self.responses.pop(0)
-
-
-def _embeddings(monkeypatch, responses):
-    dummy = DummyClient(responses)
-    monkeypatch.setattr("docai_toolkit.rag.index.HuggingFaceClient", lambda *a, **k: dummy)
-    return RemoteEmbeddings(endpoint="https://example.com"), dummy
+    def embed(self, inputs):
+        self.embed_calls.append(list(inputs))
+        return [[float(len(text))] for text in inputs]
 
 
-def test_embed_documents_uses_batch_response(monkeypatch):
-    emb, dummy = _embeddings(monkeypatch, [[[0.1], [0.2]]])
-    assert emb.embed_documents(["a", "b"]) == [[0.1], [0.2]]
-    assert dummy.calls == 1
+def test_remote_embeddings_documents(monkeypatch):
+    dummy = DummyOpenAIClient()
+    monkeypatch.setattr("docai_toolkit.rag.index.OpenAIClient", lambda *a, **k: dummy)
+    emb = RemoteEmbeddings(endpoint="https://example.com/v1", model="text-embed")
+    assert emb.embed_documents(["a", "bb"]) == [[1.0], [2.0]]
+    assert dummy.embed_calls == [["a", "bb"]]
 
 
-def test_embed_documents_falls_back_when_batch_length_mismatches(monkeypatch):
-    emb, dummy = _embeddings(monkeypatch, [[[0.1]], [[0.1]], [[0.2]]])
-    assert emb.embed_documents(["a", "b"]) == [[0.1], [0.2]]
-    assert dummy.calls == 3
+def test_remote_embeddings_query(monkeypatch):
+    dummy = DummyOpenAIClient()
+    monkeypatch.setattr("docai_toolkit.rag.index.OpenAIClient", lambda *a, **k: dummy)
+    emb = RemoteEmbeddings(endpoint="https://example.com/v1", model="text-embed")
+    assert emb.embed_query("abc") == [3.0]
 
 
-def test_embed_documents_propagates_transport_errors(monkeypatch):
+def test_remote_embeddings_propagates_transport_errors(monkeypatch):
     class FailingClient:
-        def post_json(self, *_, **__):
+        def __init__(self, *_, **__):
+            pass
+
+        def embed(self, _inputs):
             raise RuntimeError("endpoint unreachable")
 
-    monkeypatch.setattr("docai_toolkit.rag.index.HuggingFaceClient", lambda *a, **k: FailingClient())
-    emb = RemoteEmbeddings(endpoint="https://example.com")
+    monkeypatch.setattr("docai_toolkit.rag.index.OpenAIClient", FailingClient)
+    emb = RemoteEmbeddings(endpoint="https://example.com/v1", model="text-embed")
     with pytest.raises(RuntimeError):
         emb.embed_documents(["a", "b"])
 
