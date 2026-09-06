@@ -284,6 +284,7 @@ class PDFViewerApp:
                     [md_path],
                     embedding_model=self.config.embeddings.model,
                     embedding_endpoint=self.config.embeddings.endpoint,
+                    embedding_device=self.config.embeddings.device,
                     embedding_api_key=self.config.embeddings.api_key or self.config.llm.api_key,
                 )
             except Exception as exc:  # broad to keep UI responsive

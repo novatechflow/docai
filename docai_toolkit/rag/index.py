@@ -32,13 +32,30 @@ else:
     _IMPORT_ERROR = None
 
 
+def resolve_device(device: str = "auto") -> Optional[str]:
+    """Turn "auto" into the best available torch device, or pass an explicit one through."""
+    if device and device != "auto":
+        return device
+    try:
+        import torch  # type: ignore
+    except ImportError:
+        return None  # let sentence-transformers choose
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 class SentenceTransformerEmbeddings(Embeddings):
     """Adapt a local SentenceTransformer to the langchain Embeddings interface."""
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, device: str = "auto"):
         if SentenceTransformer is None:
             raise RuntimeError("sentence-transformers not installed") from _IMPORT_ERROR
-        self.model = SentenceTransformer(model_name)
+        self.device = resolve_device(device)
+        self.model = SentenceTransformer(model_name, device=self.device)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         return [[float(value) for value in vector] for vector in self.model.encode(texts)]
@@ -68,6 +85,7 @@ def build_index_from_markdown(
     persist_path: Optional[Path] = None,
     embedding_endpoint: Optional[str] = None,
     embedding_api_key: Optional[str] = None,
+    embedding_device: str = "auto",
 ):
     if RecursiveCharacterTextSplitter is None or FAISS is None:
         raise RuntimeError("langchain is required for RAG. Install langchain and langchain-community.")
@@ -85,7 +103,7 @@ def build_index_from_markdown(
     if embedding_endpoint:
         embeddings = RemoteEmbeddings(embedding_endpoint, api_key=embedding_api_key, model=embedding_model)
     else:
-        embeddings = SentenceTransformerEmbeddings(embedding_model)
+        embeddings = SentenceTransformerEmbeddings(embedding_model, device=embedding_device)
 
     db = FAISS.from_documents(docs, embeddings)
     if persist_path:
