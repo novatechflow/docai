@@ -28,7 +28,7 @@
 - The `docai-viewer` console script works from an installed wheel: `pdf_viewer_app` was never packaged, so the entry point could only fail with `ModuleNotFoundError`.
 
 ### CI
-- Added Dependabot for pip, GitHub Actions and Docker, with auto-approve and auto-merge for non-major updates and a comment on major ones.
+- Added Dependabot for pip, GitHub Actions and Docker, with auto-merge for non-major updates and a comment on major ones.
 - Pinned every third-party action to a commit SHA.
 - Release notes now contain only the section for the tag being released instead of the entire changelog.
 
