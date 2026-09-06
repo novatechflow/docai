@@ -87,6 +87,8 @@ vllm serve mistralai/Mistral-7B-Instruct-v0.3   # serves an OpenAI API on :8000
 ```
 - LLM Endpoint: `http://localhost:8000/v1`, LLM Model: `mistralai/Mistral-7B-Instruct-v0.3`
 
+**Local embeddings on Apple Silicon / NVIDIA** — with no embedding endpoint set, `sentence-transformers` runs in-process and `EmbeddingConfig.device` (`auto` by default) picks the device: CUDA if present, else Apple Metal (MPS), else CPU. Set it explicitly (`cpu`, `cuda`, `cuda:0`, `mps`) to override.
+
 **Hosted API** — set the endpoint to the provider's `/v1` base URL and put the
 key in the token field. Leaving the endpoint blank uses in-process
 `sentence-transformers` for embeddings and a local `transformers` pipeline for
