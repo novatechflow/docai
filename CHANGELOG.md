@@ -10,6 +10,7 @@
 
 ### Added
 - `EmbeddingConfig.device` is now honoured for local embeddings: `SentenceTransformerEmbeddings` resolves `"auto"` to CUDA, then Apple Metal (MPS), then CPU (or an explicit `cpu`/`cuda`/`mps`), and `build_index_from_markdown` forwards it. The knob previously existed but was ignored.
+- `docai_toolkit.ingest` and the `docai-ingest` CLI: OCR PDFs concurrently, then build a FAISS index in batches with periodic checkpoints and a ledger, so a re-run resumes without re-embedding already-indexed files. Failures on individual PDFs are recorded, not fatal. Consumes the `--doc-list` from `docai-classify`.
 - `docai_toolkit.classify` and the `docai-classify` CLI: recursively triage a file tree into documents / non-documents / quarantine, verifying each file by both extension and detected content type so mislabelled or renamed binaries do not slip through. Emits a JSON manifest and a kept-document list. Content detection prefers `python-magic` (new `classify` extra), then the `file` command, then a built-in signature sniff.
 
 ### Fixed

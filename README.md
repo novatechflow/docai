@@ -63,6 +63,25 @@ Kept types: `.pdf .doc .docx .rtf .odt .txt .md`. Content detection uses
 `file` command, then a built-in signature sniff — so it runs with no extra deps
 but is more precise with libmagic installed.
 
+### Ingesting a corpus (OCR + index at scale)
+
+`build_index_from_markdown` loads and embeds everything in one pass, which does
+not survive a large or interrupted run. `docai-ingest` OCRs PDFs concurrently,
+then adds their chunks to a FAISS index in batches, checkpointing the index and
+a ledger so a re-run resumes where it stopped (already-indexed files are
+skipped, not re-embedded).
+
+```bash
+docai-ingest --docs docs.txt --markdown-dir out/md --index out/faiss --workers 8
+```
+
+- `--docs`: a file of PDF paths, one per line — e.g. the `--doc-list` from `docai-classify`.
+- OCR client and embeddings come from `~/.docai/config.json` / env, same as the viewer.
+- `--allow-dangerous-deserialization`: required only to **resume** an existing index (it unpickles it); use it for indexes you created yourself.
+
+Pipeline end to end: `docai-classify` a tree → feed its `--doc-list` to
+`docai-ingest` → query the index with `chat_over_corpus`.
+
 ### Generation and embeddings: OpenAI-compatible endpoints
 
 Remote generation and embeddings speak the **OpenAI REST API**

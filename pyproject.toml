@@ -64,3 +64,4 @@ include = ["docai_toolkit*"]
 [project.scripts]
 docai-viewer = "pdf_viewer_app:main"
 docai-classify = "docai_toolkit.classify:main"
+docai-ingest = "docai_toolkit.ingest:main"
