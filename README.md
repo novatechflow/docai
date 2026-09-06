@@ -63,23 +63,39 @@ Kept types: `.pdf .doc .docx .rtf .odt .txt .md`. Content detection uses
 `file` command, then a built-in signature sniff — so it runs with no extra deps
 but is more precise with libmagic installed.
 
-### Hugging Face onboarding (fast path)
+### Generation and embeddings: OpenAI-compatible endpoints
 
-1. Create a Hugging Face access token: https://huggingface.co/settings/tokens (choose “Read” or “Write” as needed).
-2. Export it so the app can auto-load it:
-   ```bash
-   export HF_TOKEN=your_token_here
-   # or HUGGINGFACEHUB_API_TOKEN=your_token_here
-   ```
-3. Pick models (examples):
-   - OCR: point the OCR endpoint at a hosted OCR model (HF Inference API URL).
-   - Embeddings: e.g., `sentence-transformers/all-mpnet-base-v2` via Inference Endpoints (text-embeddings task) or local.
-   - LLM: e.g., `mistralai/Mistral-7B-Instruct-v0.1` via Inference Endpoints or local HF pipeline.
-4. Start the app, open Settings, and paste endpoints/models if you didn’t set env vars. Output dir can be set there as well.
+Remote generation and embeddings speak the **OpenAI REST API**
+(`/v1/chat/completions`, `/v1/embeddings`). Any server that implements it works
+through the same client — a local runner or a hosted gateway. Set the endpoint
+to the server's `/v1` base URL and the model to the served model name.
 
-Endpoints must be `https` (plain `http` is accepted only for `localhost`), so the access token is never
-sent in cleartext. The config file `~/.docai/config.json` is written with `0600` permissions, and a token
-picked up from the environment is not written to it.
+**Local on a laptop (Ollama)** — cross-platform, CUDA and Apple-Metal:
+
+```bash
+ollama serve
+ollama pull llama3.1
+ollama pull nomic-embed-text
+```
+- LLM Endpoint: `http://localhost:11434/v1`, LLM Model: `llama3.1`
+- Embedding Endpoint: `http://localhost:11434/v1`, Embedding Model: `nomic-embed-text`
+
+**Linux + NVIDIA, or corpus-scale batch (vLLM)** — high throughput:
+
+```bash
+vllm serve mistralai/Mistral-7B-Instruct-v0.3   # serves an OpenAI API on :8000
+```
+- LLM Endpoint: `http://localhost:8000/v1`, LLM Model: `mistralai/Mistral-7B-Instruct-v0.3`
+
+**Hosted API** — set the endpoint to the provider's `/v1` base URL and put the
+key in the token field. Leaving the endpoint blank uses in-process
+`sentence-transformers` for embeddings and a local `transformers` pipeline for
+generation, no server required.
+
+Endpoints must be `https`, except `http` is allowed for `localhost` — which is
+exactly where Ollama (`:11434`) and vLLM (`:8000`) listen, so the local token is
+never sent in cleartext. `~/.docai/config.json` is written `0600`, and a token
+picked up from the environment is not persisted to it.
 
 Environment variables:
 - `HF_TOKEN` / `HUGGINGFACEHUB_API_TOKEN` / `DOC_AI_HF_TOKEN`: auth token (auto-loads into LLM + embeddings).
@@ -122,10 +138,11 @@ pytest
 
 ## OCR + RAG (docai_toolkit/)
 
-- OCR: pluggable clients (`RemoteOcrClient` for HF/custom endpoints, `TesseractOcrClient` local fallback) that turn PDFs into Markdown (`ocr/pipeline.py`).
-- RAG: build a FAISS index from Markdown (`rag/index.py`), then chat using a chosen HF model (`rag/chat.py`).
-- Config: lightweight dataclasses in `docai_toolkit/config.py` for selecting providers/models; saved at `~/.docai/config.json`.
-- Remote-friendly: use HF token + model ids by default; configs allow custom OCR/embedding/generation endpoints. FAISS runs locally for fast retrieval.
+- OCR: pluggable clients (`RemoteOcrClient` for a custom OCR endpoint, `TesseractOcrClient` local fallback) that turn PDFs into Markdown (`ocr/pipeline.py`).
+- RAG: build a FAISS index from Markdown (`rag/index.py`), then chat over it (`rag/chat.py`).
+- Transport: generation and embeddings use the OpenAI REST API (`docai_toolkit/http_client.py`), so Ollama, vLLM, llama.cpp, TGI, and hosted APIs are interchangeable.
+- Config: lightweight dataclasses in `docai_toolkit/config.py`; saved at `~/.docai/config.json`.
+- Local retrieval: FAISS runs in-process; embeddings default to local `sentence-transformers` when no endpoint is set.
 
 To experiment locally:
 
@@ -139,7 +156,9 @@ md_path = run_ocr_to_markdown(Path("your.pdf"), Path("outputs"), client)
 print("Saved:", md_path)
 PY
 
-# Build index + chat (requires sentence_transformers + transformers)
+# Build index + chat
+# Local default needs sentence-transformers (+ transformers for local generation);
+# or point at an OpenAI-compatible server (Ollama/vLLM/hosted) via the endpoint args.
 python - <<'PY'
 from pathlib import Path
 from docai_toolkit.rag import (
@@ -149,8 +168,20 @@ from docai_toolkit.rag import (
     SentenceTransformerEmbeddings,
 )
 index_path = Path("outputs/faiss_index")
-db = build_index_from_markdown([Path("outputs/your.md")], persist_path=index_path)
-print(chat_over_corpus(db, "What is this document about?", model_id="mistralai/Mistral-7B-Instruct-v0.1"))
+
+# Served embeddings + generation (Ollama shown; drop the endpoint args for local):
+db = build_index_from_markdown(
+    [Path("outputs/your.md")],
+    embedding_model="nomic-embed-text",
+    embedding_endpoint="http://localhost:11434/v1",
+    persist_path=index_path,
+)
+print(chat_over_corpus(
+    db,
+    "What is this document about?",
+    model_id="llama3.1",
+    endpoint="http://localhost:11434/v1",
+))
 # Later, for an index you created yourself (loading unpickles the docstore):
 # db = load_index(index_path, SentenceTransformerEmbeddings("all-mpnet-base-v2"),
 #                 allow_dangerous_deserialization=True)

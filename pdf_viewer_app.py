@@ -171,9 +171,9 @@ class PDFViewerApp:
         labels = [
             ("HF Token", "llm_api_key", self.config.llm.api_key or ""),
             ("OCR Endpoint", "ocr_endpoint", self.config.ocr.endpoint or ""),
-            ("Embedding Endpoint", "emb_endpoint", self.config.embeddings.endpoint or ""),
+            ("Embedding Endpoint (/v1 base URL)", "emb_endpoint", self.config.embeddings.endpoint or ""),
             ("Embedding Model", "emb_model", self.config.embeddings.model),
-            ("LLM Endpoint", "llm_endpoint", self.config.llm.endpoint or ""),
+            ("LLM Endpoint (/v1 base URL)", "llm_endpoint", self.config.llm.endpoint or ""),
             ("LLM Model", "llm_model", self.config.llm.model),
             ("Output Dir", "output_dir", str(self.config.output_dir)),
         ]

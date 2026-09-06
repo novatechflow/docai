@@ -13,12 +13,12 @@ try:
     except ImportError:
         from langchain.embeddings.base import Embeddings
     from langchain_community.vectorstores import FAISS
-    from docai_toolkit.hf_client import HuggingFaceClient
+    from docai_toolkit.http_client import OpenAIClient
 except ImportError as _langchain_exc:  # pragma: no cover - optional dependency
     RecursiveCharacterTextSplitter = None  # type: ignore[assignment]
     FAISS = None  # type: ignore[assignment]
     Embeddings = object  # type: ignore[assignment]
-    HuggingFaceClient = None  # type: ignore[assignment]
+    OpenAIClient = None  # type: ignore[assignment]
     _LANGCHAIN_IMPORT_ERROR = _langchain_exc
 else:
     _LANGCHAIN_IMPORT_ERROR = None
@@ -48,37 +48,16 @@ class SentenceTransformerEmbeddings(Embeddings):
 
 
 class RemoteEmbeddings(Embeddings):
-    """Call a remote embedding endpoint that accepts JSON {\"inputs\": text}."""
+    """Embeddings from an OpenAI-compatible server (`/v1/embeddings`)."""
 
-    def __init__(self, endpoint: str, api_key: Optional[str] = None):
-        self.client = HuggingFaceClient(api_key, default_endpoint=endpoint)
+    def __init__(self, endpoint: str, api_key: Optional[str] = None, model: Optional[str] = None):
+        self.client = OpenAIClient(endpoint, api_key=api_key, model=model)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        try:
-            return self._extract_batch(self.client.post_json({"inputs": texts}), len(texts))
-        except ValueError:
-            return [self._extract_vector(self.client.post_json({"inputs": text})) for text in texts]
+        return self.client.embed(list(texts))
 
     def embed_query(self, text: str) -> List[float]:
-        return self._extract_vector(self.client.post_json({"inputs": text}))
-
-    @staticmethod
-    def _extract_vector(response):
-        if isinstance(response, list) and response and isinstance(response[0], list):
-            return response[0]
-        if isinstance(response, list):
-            return response
-        raise ValueError("Unexpected embedding response format.")
-
-    @staticmethod
-    def _extract_batch(response, expected: int) -> List[List[float]]:
-        if not isinstance(response, list) or len(response) != expected:
-            raise ValueError("Unexpected batch embedding response format.")
-        if response and isinstance(response[0], list):
-            return response
-        if response and isinstance(response[0], dict) and "embedding" in response[0]:
-            return [item["embedding"] for item in response]
-        raise ValueError("Unexpected batch embedding response format.")
+        return self.client.embed([text])[0]
 
 
 def build_index_from_markdown(
@@ -104,7 +83,7 @@ def build_index_from_markdown(
     docs = splitter.create_documents(texts, metadatas=metadatas)
 
     if embedding_endpoint:
-        embeddings = RemoteEmbeddings(embedding_endpoint, api_key=embedding_api_key)
+        embeddings = RemoteEmbeddings(embedding_endpoint, api_key=embedding_api_key, model=embedding_model)
     else:
         embeddings = SentenceTransformerEmbeddings(embedding_model)
 

@@ -13,25 +13,25 @@ CONFIG_PATH = Path.home() / ".docai" / "config.json"
 class OcrConfig:
     provider: str = "tesseract"
     api_key: Optional[str] = None
-    endpoint: Optional[str] = None
+    endpoint: Optional[str] = None  # custom OCR endpoint (raw PDF POST)
 
 
 @dataclass
 class EmbeddingConfig:
-    backend: str = "sentence-transformers"  # sentence-transformers | huggingface-hub
+    backend: str = "sentence-transformers"  # local sentence-transformers, or set endpoint for a served model
     model: str = "all-mpnet-base-v2"
     device: str = "auto"
-    endpoint: Optional[str] = None
+    endpoint: Optional[str] = None  # OpenAI-compatible /v1 base URL
     api_key: Optional[str] = None
 
 
 @dataclass
 class LlmConfig:
-    backend: str = "huggingface-hub"  # huggingface-hub | local-gguf | openai-compatible
+    backend: str = "local"  # local transformers, or set endpoint for an OpenAI-compatible server
     model: str = "mistralai/Mistral-7B-Instruct-v0.1"
     api_key: Optional[str] = None
     max_new_tokens: int = 256
-    endpoint: Optional[str] = None
+    endpoint: Optional[str] = None  # OpenAI-compatible /v1 base URL
 
 
 def _known_fields(cls, data: Any) -> Dict[str, Any]:

@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+### Changed
+- Remote generation and embeddings now speak the OpenAI REST API (`/v1/chat/completions`, `/v1/embeddings`) instead of the Hugging Face payload format, so any OpenAI-compatible server — Ollama, vLLM, llama.cpp, TGI, or a hosted gateway — works through one client. Endpoints are the server's `/v1` base URL; the model field is the served model name.
+- `docai_toolkit.hf_client` is replaced by `docai_toolkit.http_client`, which exposes a scheme-guarded `HttpClient` and an `OpenAIClient` (`chat`/`embed`). `RemoteEmbeddings` takes a `model` and calls `/v1/embeddings`; `chat_over_corpus` sends chat messages and exposes `k` for retrieval depth.
+- Local generation uses `HuggingFacePipeline.invoke` instead of the deprecated call form.
+- `RemoteOcrClient` posts the raw PDF to a custom OCR endpoint (unchanged wire format; OCR has no OpenAI-standard route).
+- README documents Ollama (laptop/Apple Silicon) and vLLM (NVIDIA/batch) as the blessed local runners.
+
 ### Added
 - `docai_toolkit.classify` and the `docai-classify` CLI: recursively triage a file tree into documents / non-documents / quarantine, verifying each file by both extension and detected content type so mislabelled or renamed binaries do not slip through. Emits a JSON manifest and a kept-document list. Content detection prefers `python-magic` (new `classify` extra), then the `file` command, then a built-in signature sniff.
 

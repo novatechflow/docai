@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from docai_toolkit.hf_client import HuggingFaceClient
+from docai_toolkit.http_client import OpenAIClient
 
 try:
     from langchain_community.llms import HuggingFacePipeline
@@ -12,6 +12,8 @@ except ImportError as _chat_import_error:  # pragma: no cover - optional depende
 else:
     _CHAT_IMPORT_ERROR = None
 
+SYSTEM_PROMPT = "Answer the question using only the provided context."
+
 
 def chat_over_corpus(
     db,
@@ -20,36 +22,38 @@ def chat_over_corpus(
     endpoint: Optional[str] = None,
     api_key: Optional[str] = None,
     max_new_tokens: int = 256,
+    k: int = 4,
 ) -> str:
-    """Simple retrieve-then-generate over a FAISS db."""
-    docs = db.similarity_search(query, k=4)
+    """Retrieve-then-generate over a FAISS db.
+
+    With ``endpoint`` set, generation goes to an OpenAI-compatible server
+    (Ollama, vLLM, llama.cpp, a hosted API); ``endpoint`` is the server's
+    ``/v1`` base URL and ``model_id`` is the served model name. Without it,
+    a local transformers pipeline runs ``model_id``.
+    """
+    docs = db.similarity_search(query, k=k)
     context_blocks: List[str] = []
     for doc in docs:
         src = doc.metadata.get("source", "unknown")
         context_blocks.append(f"Source: {src}\n{doc.page_content}")
     context = "\n\n".join(context_blocks)
 
-    prompt = f"Answer the question using only the provided context.\n\nContext:\n{context}\n\nQuestion:\n{query}\n\nAnswer:"
+    user_prompt = f"Context:\n{context}\n\nQuestion:\n{query}"
 
     if endpoint:
-        client = HuggingFaceClient(api_key, default_endpoint=endpoint)
-        resp = client.post_json(
-            {
-                "inputs": prompt,
-                "parameters": {"max_new_tokens": max_new_tokens},
-            }
+        client = OpenAIClient(endpoint, api_key=api_key, model=model_id)
+        return client.chat(
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=max_new_tokens,
         )
-        if isinstance(resp, list) and resp and isinstance(resp[0], dict) and "generated_text" in resp[0]:
-            return resp[0]["generated_text"]
-        if isinstance(resp, dict) and "generated_text" in resp:
-            return resp["generated_text"]
-        if isinstance(resp, str):
-            return resp
-        raise ValueError("Unexpected response from generation endpoint.")
 
     if pipeline is None or HuggingFacePipeline is None:
         raise RuntimeError("transformers/langchain-community required for local HF generation.")
 
+    prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}\n\nAnswer:"
     pipe = pipeline("text-generation", model=model_id, device_map="auto")
     llm = HuggingFacePipeline(pipeline=pipe)
-    return llm(prompt)
+    return llm.invoke(prompt)
