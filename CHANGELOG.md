@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+### Added
+- `docai_toolkit.classify` and the `docai-classify` CLI: recursively triage a file tree into documents / non-documents / quarantine, verifying each file by both extension and detected content type so mislabelled or renamed binaries do not slip through. Emits a JSON manifest and a kept-document list. Content detection prefers `python-magic` (new `classify` extra), then the `file` command, then a built-in signature sniff.
+
 ### Fixed
 - Chat with Docs is wired up again: the question is asked before the worker starts, and the worker now retrieves, generates, and shows the answer instead of discarding the index.
 - RAG imports work with langchain >= 0.2 (`langchain_text_splitters` / `langchain_core.embeddings`); indexing previously failed with "langchain is required" even when langchain was installed.
