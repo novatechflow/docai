@@ -1,14 +1,17 @@
-PyPDF2
-reportlab
-pytest
-langchain
-langchain-community
-transformers
-accelerate
-bitsandbytes
-sentence-transformers
-huggingface-hub
-faiss-cpu
-pytesseract
-pdf2image
-tomli-w
+# Pinned runtime set for the Docker image and reproducible local installs.
+# Library consumers should install the package and its extras instead:
+#   pip install "docai-toolkit[all]"
+# Dependabot keeps these pins current.
+pypdf==6.17.0
+reportlab==4.4.5
+pytesseract==0.3.13
+pdf2image==1.17.0
+langchain==1.1.0
+langchain-community==0.4.1
+langchain-text-splitters==1.0.0
+sentence-transformers==5.1.2
+faiss-cpu==1.13.0
+huggingface-hub==0.34.4
+transformers==4.56.0
+accelerate==1.10.1
+bitsandbytes==0.42.0

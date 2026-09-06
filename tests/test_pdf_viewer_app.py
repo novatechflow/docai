@@ -2,8 +2,8 @@ import pytest
 
 pytest.importorskip("langchain")
 pytest.importorskip("tkinter")
-PyPDF2 = pytest.importorskip("PyPDF2")
-PdfReader = PyPDF2.PdfReader
+pypdf = pytest.importorskip("pypdf")
+PdfReader = pypdf.PdfReader
 
 try:
     from reportlab.lib.pagesizes import letter

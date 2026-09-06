@@ -19,6 +19,19 @@
 ### Removed
 - `DeepSeekOcrClient` placeholder and the unused `OcrConfig.model` / OCR Model setting.
 
+### Dependencies
+- Split dependencies into `ocr`, `rag`, `llm`, `all` and `dev` extras so the viewer no longer pulls in torch, bitsandbytes and faiss; `pytest` moved out of the runtime dependency set.
+- `requirements.txt` is now an exact-pinned set used by the Docker image, and version ranges in `pyproject.toml` are bounded.
+- Replaced the retired `PyPDF2` with its maintained successor `pypdf`.
+- Raised the floor to Python 3.11 and added a `pytest` matrix over 3.11/3.12/3.13; the Docker base image moves to `python:3.13-slim`, pinned by digest.
+- Added a `[build-system]` table and PEP 639 license metadata.
+- The `docai-viewer` console script works from an installed wheel: `pdf_viewer_app` was never packaged, so the entry point could only fail with `ModuleNotFoundError`.
+
+### CI
+- Added Dependabot for pip, GitHub Actions and Docker, with auto-approve and auto-merge for non-major updates and a comment on major ones.
+- Pinned every third-party action to a commit SHA.
+- Release notes now contain only the section for the tag being released instead of the entire changelog.
+
 ## 0.1.3.1
 ### Changed
 - pypi push fixed

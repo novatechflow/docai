@@ -8,7 +8,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog
 
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from docai_toolkit.config import AppConfig
 from docai_toolkit.ocr import RemoteOcrClient, TesseractOcrClient, run_ocr_to_markdown
