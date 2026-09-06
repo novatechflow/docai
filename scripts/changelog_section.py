@@ -8,7 +8,7 @@ CHANGELOG = Path("CHANGELOG.md")
 
 
 def section_for(version: str, changelog: str) -> str:
-    pattern = rf"^## +{re.escape(version)} *$"
+    pattern = rf"^## +{re.escape(version)}(?:\s.*)?$"
     lines = changelog.splitlines()
     for index, line in enumerate(lines):
         if re.match(pattern, line):
