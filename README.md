@@ -8,17 +8,25 @@ Local OCR + Markdown + RAG with optional Hugging Face/custom endpoints. Renamed 
 
 ## Requirements
 
-- Python 3.9+
-- Runtime deps vary by script:
-  - Viewer: `PyPDF2`, `reportlab` (for saving)
-  - RAG scripts: `langchain`, `langchain-community`, `transformers`, `accelerate`, `bitsandbytes`, `sentence_transformers`
-
-Install everything:
+- Python 3.11+ (tested on 3.11, 3.12 and 3.13)
+- Dependencies are split into extras so the viewer does not drag in the ML stack:
+  - core (always installed): `pypdf`, `reportlab`
+  - `ocr`: `pytesseract`, `pdf2image` (plus the `tesseract-ocr` and `poppler` system packages)
+  - `rag`: `langchain`, `langchain-community`, `sentence-transformers`, `faiss-cpu`, `huggingface-hub`
+  - `llm`: `transformers`, `accelerate`, `bitsandbytes` (only for local generation)
 
 ```bash
+# viewer only
+pip install .
+
+# everything
+pip install ".[all]"
+
+# development (extras + pytest)
+pip install -e ".[dev]"
+
+# exact pinned set used by the Docker image
 pip install -r requirements.txt
-# or editable install
-pip install -e .
 ```
 
 ## Usage
