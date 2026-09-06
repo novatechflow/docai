@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "docai-toolkit"
-version = "1.4.0"
+version = "0.2.0"
 description = "Local OCR + Markdown + RAG toolkit with optional Hugging Face endpoints."
 readme = "README.md"
 requires-python = ">=3.11"
