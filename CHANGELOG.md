@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.0 - 2026-09-06
+## 0.2.0 - 2026-09-06
 ### Changed
 - Remote generation and embeddings now speak the OpenAI REST API (`/v1/chat/completions`, `/v1/embeddings`) instead of the Hugging Face payload format, so any OpenAI-compatible server — Ollama, vLLM, llama.cpp, TGI, or a hosted gateway — works through one client. Endpoints are the server's `/v1` base URL; the model field is the served model name.
 - `docai_toolkit.hf_client` is replaced by `docai_toolkit.http_client`, which exposes a scheme-guarded `HttpClient` and an `OpenAIClient` (`chat`/`embed`). `RemoteEmbeddings` takes a `model` and calls `/v1/embeddings`; `chat_over_corpus` sends chat messages and exposes `k` for retrieval depth.
