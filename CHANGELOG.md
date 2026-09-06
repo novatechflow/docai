@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0 - 2026-09-06
 ### Changed
 - Remote generation and embeddings now speak the OpenAI REST API (`/v1/chat/completions`, `/v1/embeddings`) instead of the Hugging Face payload format, so any OpenAI-compatible server — Ollama, vLLM, llama.cpp, TGI, or a hosted gateway — works through one client. Endpoints are the server's `/v1` base URL; the model field is the served model name.
 - `docai_toolkit.hf_client` is replaced by `docai_toolkit.http_client`, which exposes a scheme-guarded `HttpClient` and an `OpenAIClient` (`chat`/`embed`). `RemoteEmbeddings` takes a `model` and calls `/v1/embeddings`; `chat_over_corpus` sends chat messages and exposes `k` for retrieval depth.
@@ -35,7 +35,7 @@
 - Split dependencies into `ocr`, `rag`, `llm`, `all` and `dev` extras so the viewer no longer pulls in torch, bitsandbytes and faiss; `pytest` moved out of the runtime dependency set.
 - `requirements.txt` is now an exact-pinned set used by the Docker image, and version ranges in `pyproject.toml` are bounded.
 - Replaced the retired `PyPDF2` with its maintained successor `pypdf`.
-- Raised the floor to Python 3.11 and added a `pytest` matrix over 3.11/3.12/3.13; the Docker base image moves to `python:3.13-slim`, pinned by digest.
+- Raised the floor to Python 3.11 and added a `pytest` matrix over 3.11, 3.12, 3.13 and 3.14; the Docker base image moves to `python:3.14-slim`, pinned by digest.
 - Added a `[build-system]` table and PEP 639 license metadata.
 - The `docai-viewer` console script works from an installed wheel: `pdf_viewer_app` was never packaged, so the entry point could only fail with `ModuleNotFoundError`.
 
