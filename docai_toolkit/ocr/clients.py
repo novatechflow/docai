@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from docai_toolkit.hf_client import HuggingFaceClient
 
@@ -18,32 +20,16 @@ class OcrClient(ABC):
         raise NotImplementedError
 
 
-class DeepSeekOcrClient(OcrClient):
-    """Placeholder for DeepSeek OCR API integration."""
-
-    def __init__(self, api_key: str, model: str | None = None) -> None:
-        self.api_key = api_key
-        self.model = model or "deepseek-ocr-default"
-
-    def recognize(self, pdf_path: Path) -> List[PageResult]:
-        raise NotImplementedError("DeepSeek OCR integration not yet implemented.")
-
-
 class RemoteOcrClient(OcrClient):
     """Generic OCR via a Hugging Face Inference or custom endpoint."""
 
-    def __init__(self, api_key: str | None, endpoint: str, model: str | None = None) -> None:
+    def __init__(self, api_key: Optional[str], endpoint: str) -> None:
         self.client = HuggingFaceClient(api_key, default_endpoint=endpoint)
-        self.model = model
 
     def recognize(self, pdf_path: Path) -> List[PageResult]:
-        with open(pdf_path, "rb") as handle:
-            pdf_bytes = handle.read()
+        pdf_bytes = pdf_path.read_bytes()
+        response = self.client.post_json(pdf_bytes, content_type="application/pdf")
 
-        payload = pdf_bytes
-        response = self.client.post_json(payload, content_type="application/pdf")
-
-        # Accept a few possible response shapes.
         if isinstance(response, str):
             pages = [response]
         elif isinstance(response, list):
@@ -58,7 +44,7 @@ class RemoteOcrClient(OcrClient):
         else:
             pages = [""]
 
-        return [PageResult(page_number=i + 1, text=pages[i]) for i in range(len(pages))]
+        return [PageResult(page_number=index + 1, text=text) for index, text in enumerate(pages)]
 
 
 class TesseractOcrClient(OcrClient):
@@ -76,8 +62,7 @@ class TesseractOcrClient(OcrClient):
 
     def recognize(self, pdf_path: Path) -> List[PageResult]:
         images = self._convert_from_path(str(pdf_path))
-        results: List[PageResult] = []
-        for idx, image in enumerate(images):
-            text = self._pytesseract.image_to_string(image)
-            results.append(PageResult(page_number=idx + 1, text=text))
-        return results
+        return [
+            PageResult(page_number=index + 1, text=self._pytesseract.image_to_string(image))
+            for index, image in enumerate(images)
+        ]

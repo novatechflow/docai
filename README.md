@@ -49,6 +49,10 @@ python pdf_viewer_app.py
    - LLM: e.g., `mistralai/Mistral-7B-Instruct-v0.1` via Inference Endpoints or local HF pipeline.
 4. Start the app, open Settings, and paste endpoints/models if you didn’t set env vars. Output dir can be set there as well.
 
+Endpoints must be `https` (plain `http` is accepted only for `localhost`), so the access token is never
+sent in cleartext. The config file `~/.docai/config.json` is written with `0600` permissions, and a token
+picked up from the environment is not written to it.
+
 Environment variables:
 - `HF_TOKEN` / `HUGGINGFACEHUB_API_TOKEN` / `DOC_AI_HF_TOKEN`: auth token (auto-loads into LLM + embeddings).
 - `DOC_AI_OUTPUT_DIR`: default output directory for OCR/Markdown.
@@ -110,11 +114,18 @@ PY
 # Build index + chat (requires sentence_transformers + transformers)
 python - <<'PY'
 from pathlib import Path
-from docai_toolkit.rag import build_index_from_markdown, chat_over_corpus, load_index
+from docai_toolkit.rag import (
+    build_index_from_markdown,
+    chat_over_corpus,
+    load_index,
+    SentenceTransformerEmbeddings,
+)
 index_path = Path("outputs/faiss_index")
 db = build_index_from_markdown([Path("outputs/your.md")], persist_path=index_path)
 print(chat_over_corpus(db, "What is this document about?", model_id="mistralai/Mistral-7B-Instruct-v0.1"))
-# Later: db = load_index(index_path)
+# Later, for an index you created yourself (loading unpickles the docstore):
+# db = load_index(index_path, SentenceTransformerEmbeddings("all-mpnet-base-v2"),
+#                 allow_dangerous_deserialization=True)
 PY
 ```
 

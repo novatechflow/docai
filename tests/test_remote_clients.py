@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 pytest.importorskip("langchain")
@@ -31,7 +29,7 @@ def test_remote_ocr_parses_common_shapes(tmp_path, monkeypatch):
     ]
 
     for resp in scenarios:
-        client = RemoteOcrClient(api_key=None, endpoint="http://example.com")
+        client = RemoteOcrClient(api_key=None, endpoint="https://example.com")
         client.client = DummyClient(resp)  # type: ignore[attr-defined]
         pages = client.recognize(pdf_path)
         assert pages, f"Empty pages for response {resp}"
@@ -48,7 +46,7 @@ def test_remote_embeddings_handles_list_response(monkeypatch):
     # Patch the HF client at source to avoid network calls.
     monkeypatch.setattr("docai_toolkit.rag.index.HuggingFaceClient", lambda *a, **k: dummy)
 
-    emb = RemoteEmbeddings(endpoint="http://example.com")
+    emb = RemoteEmbeddings(endpoint="https://example.com")
     vec = emb.embed_query("hi")
     assert vec == resp[0]
     assert dummy.calls == 1

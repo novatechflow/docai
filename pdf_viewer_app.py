@@ -1,5 +1,7 @@
 """Simple PDF viewer/editor UI using Tkinter with OCR + RAG entry points."""
 
+from __future__ import annotations
+
 import io
 import threading
 import tkinter as tk
@@ -155,6 +157,10 @@ class PDFViewerApp:
     def _set_status(self, message: str = "") -> None:
         self.status_bar.config(text=message)
 
+    def _report_error(self, title: str, exc: Exception, status: str) -> None:
+        detail = str(exc)
+        self.root.after(0, lambda: (messagebox.showerror(title, detail), self._set_status(status)))
+
     def open_settings(self) -> None:
         """Simple settings panel for HF token/endpoints and output dir."""
         win = tk.Toplevel(self.root)
@@ -165,7 +171,6 @@ class PDFViewerApp:
         labels = [
             ("HF Token", "llm_api_key", self.config.llm.api_key or ""),
             ("OCR Endpoint", "ocr_endpoint", self.config.ocr.endpoint or ""),
-            ("OCR Model", "ocr_model", self.config.ocr.model or ""),
             ("Embedding Endpoint", "emb_endpoint", self.config.embeddings.endpoint or ""),
             ("Embedding Model", "emb_model", self.config.embeddings.model),
             ("LLM Endpoint", "llm_endpoint", self.config.llm.endpoint or ""),
@@ -175,7 +180,7 @@ class PDFViewerApp:
         entries: dict[str, tk.Entry] = {}
         for label_text, key, value in labels:
             tk.Label(win, text=label_text).grid(row=row, column=0, sticky="w", padx=6, pady=4)
-            ent = tk.Entry(win, width=50)
+            ent = tk.Entry(win, width=50, show="*" if key == "llm_api_key" else "")
             ent.insert(0, value)
             ent.grid(row=row, column=1, sticky="w", padx=6, pady=4)
             entries[key] = ent
@@ -197,7 +202,6 @@ class PDFViewerApp:
             self.config.llm.model = entries["llm_model"].get().strip() or self.config.llm.model
 
             self.config.ocr.endpoint = entries["ocr_endpoint"].get().strip() or None
-            self.config.ocr.model = entries["ocr_model"].get().strip() or None
 
             self.config.embeddings.endpoint = entries["emb_endpoint"].get().strip() or None
             self.config.embeddings.model = entries["emb_model"].get().strip() or self.config.embeddings.model
@@ -236,8 +240,7 @@ class PDFViewerApp:
             try:
                 md_path = run_ocr_to_markdown(pdf_path, self.config.output_dir, client)
             except Exception as exc:  # broad to keep UI responsive
-                self.root.after(0, lambda: messagebox.showerror("OCR failed", str(exc)))
-                self._set_status("OCR failed.")
+                self._report_error("OCR failed", exc, "OCR failed.")
                 return
             self.root.after(
                 0,
@@ -255,14 +258,11 @@ class PDFViewerApp:
             return RemoteOcrClient(
                 api_key=self.config.ocr.api_key or self.config.llm.api_key,
                 endpoint=self.config.ocr.endpoint,
-                model=self.config.ocr.model,
             )
-        if self.config.ocr.provider == "tesseract" or not self.config.ocr.provider:
-            try:
-                return TesseractOcrClient()
-            except RuntimeError as exc:
-                raise RuntimeError("Install pytesseract and pdf2image for local OCR.") from exc
-        raise NotImplementedError("Selected OCR provider not implemented.")
+        try:
+            return TesseractOcrClient()
+        except RuntimeError as exc:
+            raise RuntimeError("Install pytesseract and pdf2image for local OCR.") from exc
 
     def chat_with_docs(self) -> None:
         md_path_str = filedialog.askopenfilename(
@@ -274,35 +274,33 @@ class PDFViewerApp:
             return
         md_path = Path(md_path_str)
 
+        query = simpledialog.askstring("Chat", "Ask a question about the document:")
+        if not query:
+            return
+
         def worker():
             try:
-                db_local = build_index_from_markdown(
+                db = build_index_from_markdown(
                     [md_path],
                     embedding_model=self.config.embeddings.model,
                     embedding_endpoint=self.config.embeddings.endpoint,
                     embedding_api_key=self.config.embeddings.api_key or self.config.llm.api_key,
                 )
-            except Exception as exc:
-                self.root.after(0, lambda: messagebox.showerror("Indexing failed", str(exc)))
-                self._set_status("Indexing failed.")
+            except Exception as exc:  # broad to keep UI responsive
+                self._report_error("Indexing failed", exc, "Indexing failed.")
                 return
-
-        query = simpledialog.askstring("Chat", "Ask a question about the document:")
-        if not query:
-            return
 
             try:
                 answer = chat_over_corpus(
-                    db_local,
+                    db,
                     query,
                     model_id=self.config.llm.model,
                     endpoint=self.config.llm.endpoint,
                     api_key=self.config.llm.api_key,
                     max_new_tokens=self.config.llm.max_new_tokens,
                 )
-            except Exception as exc:
-                self.root.after(0, lambda: messagebox.showerror("Chat failed", str(exc)))
-                self._set_status("Chat failed.")
+            except Exception as exc:  # broad to keep UI responsive
+                self._report_error("Chat failed", exc, "Chat failed.")
                 return
 
             self.root.after(
