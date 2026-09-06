@@ -1,10 +1,18 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Iterable, List, Optional
 
 try:
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+    except ImportError:  # langchain < 0.2 kept the splitters in the core package
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+    try:
+        from langchain_core.embeddings import Embeddings
+    except ImportError:
+        from langchain.embeddings.base import Embeddings
     from langchain_community.vectorstores import FAISS
-    from langchain.embeddings.base import Embeddings
     from docai_toolkit.hf_client import HuggingFaceClient
 except ImportError as _langchain_exc:  # pragma: no cover - optional dependency
     RecursiveCharacterTextSplitter = None  # type: ignore[assignment]
@@ -24,10 +32,19 @@ else:
     _IMPORT_ERROR = None
 
 
-def _load_embedding_model(model_name: str):
-    if SentenceTransformer is None:
-        raise RuntimeError("sentence-transformers not installed") from _IMPORT_ERROR
-    return SentenceTransformer(model_name)
+class SentenceTransformerEmbeddings(Embeddings):
+    """Adapt a local SentenceTransformer to the langchain Embeddings interface."""
+
+    def __init__(self, model_name: str):
+        if SentenceTransformer is None:
+            raise RuntimeError("sentence-transformers not installed") from _IMPORT_ERROR
+        self.model = SentenceTransformer(model_name)
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [[float(value) for value in vector] for vector in self.model.encode(texts)]
+
+    def embed_query(self, text: str) -> List[float]:
+        return [float(value) for value in self.model.encode(text)]
 
 
 class RemoteEmbeddings(Embeddings):
@@ -38,18 +55,12 @@ class RemoteEmbeddings(Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         try:
-            resp = self.client.post_json({"inputs": texts})
-            return self._extract_batch(resp, len(texts))
-        except Exception:
-            vectors: List[List[float]] = []
-            for text in texts:
-                single = self.client.post_json({"inputs": text})
-                vectors.append(self._extract_vector(single))
-            return vectors
+            return self._extract_batch(self.client.post_json({"inputs": texts}), len(texts))
+        except ValueError:
+            return [self._extract_vector(self.client.post_json({"inputs": text})) for text in texts]
 
     def embed_query(self, text: str) -> List[float]:
-        resp = self.client.post_json({"inputs": text})
-        return self._extract_vector(resp)
+        return self._extract_vector(self.client.post_json({"inputs": text}))
 
     @staticmethod
     def _extract_vector(response):
@@ -61,9 +72,11 @@ class RemoteEmbeddings(Embeddings):
 
     @staticmethod
     def _extract_batch(response, expected: int) -> List[List[float]]:
-        if isinstance(response, list) and response and isinstance(response[0], list):
+        if not isinstance(response, list) or len(response) != expected:
+            raise ValueError("Unexpected batch embedding response format.")
+        if response and isinstance(response[0], list):
             return response
-        if isinstance(response, list) and len(response) == expected and isinstance(response[0], dict) and "embedding" in response[0]:
+        if response and isinstance(response[0], dict) and "embedding" in response[0]:
             return [item["embedding"] for item in response]
         raise ValueError("Unexpected batch embedding response format.")
 
@@ -84,8 +97,7 @@ def build_index_from_markdown(
     metadatas: List[dict] = []
 
     for path in markdown_files:
-        content = path.read_text(encoding="utf-8")
-        texts.append(content)
+        texts.append(path.read_text(encoding="utf-8"))
         metadatas.append({"source": str(path)})
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -94,7 +106,8 @@ def build_index_from_markdown(
     if embedding_endpoint:
         embeddings = RemoteEmbeddings(embedding_endpoint, api_key=embedding_api_key)
     else:
-        embeddings = _load_embedding_model(embedding_model)
+        embeddings = SentenceTransformerEmbeddings(embedding_model)
+
     db = FAISS.from_documents(docs, embeddings)
     if persist_path:
         persist_path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,10 +115,15 @@ def build_index_from_markdown(
     return db
 
 
-def load_index(persist_path: Path):
-    if not persist_path.exists():
-        raise FileNotFoundError(f"Persisted index not found at {persist_path}")
+def load_index(persist_path: Path, embeddings, allow_dangerous_deserialization: bool = False):
     if FAISS is None:
         raise RuntimeError("langchain-community is required to load indexes.")
-    embeddings = None  # embeddings are restored from disk
-    return FAISS.load_local(str(persist_path), embeddings, allow_dangerous_deserialization=False)
+    if not persist_path.exists():
+        raise FileNotFoundError(f"Persisted index not found at {persist_path}")
+    if not allow_dangerous_deserialization:
+        raise ValueError(
+            "Loading a FAISS index unpickles its docstore, which executes arbitrary code if the "
+            "files were tampered with. Pass allow_dangerous_deserialization=True only for indexes "
+            "you created yourself."
+        )
+    return FAISS.load_local(str(persist_path), embeddings, allow_dangerous_deserialization=True)

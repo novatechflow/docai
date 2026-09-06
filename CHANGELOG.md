@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+### Fixed
+- Chat with Docs is wired up again: the question is asked before the worker starts, and the worker now retrieves, generates, and shows the answer instead of discarding the index.
+- RAG imports work with langchain >= 0.2 (`langchain_text_splitters` / `langchain_core.embeddings`); indexing previously failed with "langchain is required" even when langchain was installed.
+- Local embeddings go through a `SentenceTransformerEmbeddings` adapter, so the default (endpoint-less) index path no longer hands a raw `SentenceTransformer` to FAISS.
+- `load_index` takes the embeddings it needs and an explicit `allow_dangerous_deserialization` opt-in; it previously raised unconditionally.
+- Worker threads report status through `root.after` instead of touching Tk directly.
+- Default OCR provider is `tesseract`; the unimplemented `deepseek` default made OCR fail out of the box.
+- Malformed or outdated `~/.docai/config.json` falls back to defaults instead of crashing at startup.
+- Remote embedding batches are length-checked, and the per-text fallback no longer swallows transport errors.
+- `pyproject.toml` version matches the changelog.
+
+### Security
+- Endpoints are restricted to `https` (and `http` on localhost); arbitrary schemes such as `file://` previously turned an endpoint call into a local file read, and `http://` sent the bearer token in cleartext.
+- `~/.docai/config.json` is written `0600` inside a `0700` directory, and a token sourced from the environment is no longer persisted to it. The Settings token field is masked.
+
+### Removed
+- `DeepSeekOcrClient` placeholder and the unused `OcrConfig.model` / OCR Model setting.
+
 ## 0.1.3.1
 ### Changed
 - pypi push fixed
