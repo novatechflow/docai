@@ -2,7 +2,7 @@
 # Library consumers should install the package and its extras instead:
 #   pip install "docai-toolkit[all]"
 # Dependabot keeps these pins current.
-pypdf==6.17.0
+pypdf==6.18.0
 reportlab==5.0.1
 pytesseract==0.3.13
 pdf2image==1.17.0
@@ -11,7 +11,7 @@ langchain-community==0.4.2
 langchain-text-splitters==1.1.2
 sentence-transformers==6.0.1
 faiss-cpu==1.15.0
-huggingface-hub==1.30.0
-transformers==5.16.1
-accelerate==1.14.0
+huggingface-hub==1.31.0
+transformers==5.17.0
+accelerate==1.15.0
 bitsandbytes==0.50.2
