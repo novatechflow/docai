@@ -34,7 +34,7 @@ rag = [
   "langchain-text-splitters>=1.0,<2",
   "sentence-transformers>=5.0,<7",
   "faiss-cpu>=1.9,<2",
-  "huggingface-hub>=0.34,<2",
+  "huggingface-hub>=0.34,<3",
 ]
 llm = [
   "transformers>=4.56,<6",
