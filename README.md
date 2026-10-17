@@ -213,21 +213,21 @@ PY
 
 This toolkit was architected as part of a consulting engagement to solve common document-centric workflow challenges: extraction, segmentation, text cleaning, OCR, and embedding preparation for AI models.
 
-**Full case study:** [Document Processing Pipeline Using docAI Toolkit](https://www.novatechflow.com/p/document-processing-pipeline-using.html)
+**Background:** [Beyond Ctrl+F: Use LLMs for PDF Analysis](https://www.novatechflow.com/2024/05/beyond-ctrlf-use-llms-for-pdf-analysis.html)
 
 ### The Problem
 
-Teams building RAG pipelines or document analytics typically stitch together custom scripts, ad-hoc processing, or partial library support—resulting in inconsistent, brittle pipelines.
+Teams building RAG pipelines or document analytics typically stitch together custom scripts, ad-hoc processing, or partial library support, resulting in inconsistent, brittle pipelines.
 
 ### The Solution
 
 docAI provides a clean, modular toolkit for building AI-ready document processing flows:
 
-- **Document loading** — PDF, DOCX, Markdown
-- **Page and text splitting** — Configurable chunking
-- **Preprocessing** — Cleaning, normalization
-- **OCR** — Local (Tesseract) or remote (Hugging Face/custom endpoints)
-- **Embedding preparation** — Ready for FAISS, vector DBs, or ML pipelines
+- **Document loading**: PDF, DOCX, Markdown
+- **Page and text splitting**: configurable chunking
+- **Preprocessing**: cleaning, normalization
+- **OCR**: local (Tesseract) or remote (Hugging Face/custom endpoints)
+- **Embedding preparation**: ready for FAISS, vector DBs, or ML pipelines
 
 ### Example Workflow
 ```
