@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 pytest.importorskip("langchain")
@@ -55,7 +57,24 @@ def test_batch_ocr_writes_markdown_and_isolates_failures(tmp_path):
     assert len(summary.markdown_paths) == 2
     assert len(summary.failures) == 1
     assert summary.failures[0].source.endswith("doc1.pdf")
-    assert (out / "doc0.md").read_text().strip().endswith("text of doc0")
+    doc0 = next(o for o in summary.outcomes if o.source.endswith("doc0.pdf"))
+    assert Path(doc0.markdown).read_text().strip().endswith("text of doc0")
+
+
+def test_batch_ocr_keeps_pdfs_with_the_same_name_apart(tmp_path):
+    first = tmp_path / "a" / "report.pdf"
+    second = tmp_path / "b" / "report.pdf"
+    for p in (first, second):
+        p.parent.mkdir()
+        p.write_bytes(b"%PDF-1.4 x")
+    out = tmp_path / "md"
+    client = FakeOcrClient()
+
+    summary = batch_ocr([first, second], out, client, workers=2)
+
+    assert client.seen == ["report.pdf", "report.pdf"]
+    assert all(not o.skipped for o in summary.outcomes)
+    assert len(set(summary.markdown_paths)) == 2
 
 
 def test_batch_ocr_skips_existing(tmp_path):
