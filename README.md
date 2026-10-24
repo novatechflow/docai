@@ -1,6 +1,6 @@
 # DocAI Toolkit
 
-Local OCR + Markdown + RAG with optional Hugging Face/custom endpoints. Renamed to avoid PyPI name collisions (`docai-toolkit` package import is `docai_toolkit`).
+Local OCR, Markdown and RAG with optional OpenAI-compatible endpoints for generation and embeddings, and an optional custom OCR endpoint. The PyPI package is `docai-toolkit` and the import name is `docai_toolkit`.
 
 - `pdf_viewer_app.py`: Tkinter UI to open PDFs, run OCR → Markdown, and “chat” via retrieval + generation.
 - `docai_toolkit/`: library for OCR (local Tesseract or remote endpoint), embedding/indexing (local or remote), and simple chat over FAISS.
@@ -8,7 +8,7 @@ Local OCR + Markdown + RAG with optional Hugging Face/custom endpoints. Renamed 
 
 ## Requirements
 
-- Python 3.11+ (tested on 3.11, 3.12 and 3.13)
+- Python 3.11+ (CI tests 3.11, 3.12, 3.13 and 3.14; the Docker image uses 3.14)
 - Dependencies are split into extras so the viewer does not drag in the ML stack:
   - core (always installed): `pypdf`, `reportlab`
   - `ocr`: `pytesseract`, `pdf2image` (plus the `tesseract-ocr` and `poppler` system packages)
@@ -39,15 +39,15 @@ python pdf_viewer_app.py
 
 - Open: loads all pages of a PDF into the text area.
 - Save As: renders the text area content into a new PDF (requires `reportlab`).
-- OCR → Markdown: run OCR on a PDF and save Markdown to the configured output directory (local Tesseract or remote OCR endpoint via HF/custom).
-- Chat: build a quick FAISS index over a chosen Markdown file and query it with a selected HF model (remote endpoint or local HF pipeline).
+- OCR → Markdown: run OCR on a PDF and save Markdown to the configured output directory (local Tesseract, or a custom OCR endpoint that takes the raw PDF).
+- Chat: build a quick FAISS index over a chosen Markdown file and query it with the configured LLM model (an OpenAI-compatible endpoint, or a local `transformers` pipeline when no endpoint is set).
 - Settings: set HF token, optional custom endpoints (OCR/embeddings/LLM), model choices, and output directory. Settings persist to `~/.docai/config.json`. Env vars (`HF_TOKEN`, `HUGGINGFACEHUB_API_TOKEN`, `DOC_AI_OUTPUT_DIR`) are auto-read.
 
 ### Triaging a mixed file tree
 
 Before OCR/indexing a large, untrusted pile of files, separate real documents
 from media, archives, and renamed binaries. Classification checks each file two
-ways — extension *and* detected content type — and only keeps a file when both
+ways, by extension *and* by detected content type, and only keeps a file when both
 agree; anything that disagrees, is empty, unreadable, or unexpectedly large is
 quarantined for review rather than fed downstream.
 
@@ -56,7 +56,7 @@ docai-classify /path/to/tree --manifest manifest.json --doc-list docs.txt
 ```
 
 - `--manifest`: JSON report with per-file verdicts, reasons, and byte/count totals.
-- `--doc-list`: newline-separated paths of the kept documents, ready to pipe into OCR.
+- `--doc-list`: newline-separated paths of the kept documents. It lists every kept type, not only PDFs.
 
 Kept types: `.pdf .doc .docx .rtf .odt .txt .md`. Content detection uses
 `python-magic` (`pip install ".[classify]"`) when available, then the system
@@ -75,21 +75,28 @@ skipped, not re-embedded).
 docai-ingest --docs docs.txt --markdown-dir out/md --index out/faiss --workers 8
 ```
 
-- `--docs`: a file of PDF paths, one per line — e.g. the `--doc-list` from `docai-classify`.
+- `--docs`: a file of PDF paths, one per line. `docai-ingest` OCRs every entry as a PDF, so other file types fail and are reported as `FAILED`.
 - OCR client and embeddings come from `~/.docai/config.json` / env, same as the viewer.
-- `--allow-dangerous-deserialization`: required only to **resume** an existing index (it unpickles it); use it for indexes you created yourself.
+- `--allow-dangerous-deserialization`: required only to **resume** an existing index (it unpickles it). Use it only for indexes you created yourself.
 
-Pipeline end to end: `docai-classify` a tree → feed its `--doc-list` to
-`docai-ingest` → query the index with `chat_over_corpus`.
+Pipeline end to end: run `docai-classify` on a tree, keep only the PDFs from its
+`--doc-list`, pass that file to `docai-ingest`, then query the index with
+`chat_over_corpus`.
+
+```bash
+docai-classify /path/to/tree --doc-list docs.txt
+grep -i '\.pdf$' docs.txt > pdfs.txt
+docai-ingest --docs pdfs.txt --markdown-dir out/md --index out/faiss --workers 8
+```
 
 ### Generation and embeddings: OpenAI-compatible endpoints
 
 Remote generation and embeddings speak the **OpenAI REST API**
 (`/v1/chat/completions`, `/v1/embeddings`). Any server that implements it works
-through the same client — a local runner or a hosted gateway. Set the endpoint
+through the same client, whether it is a local runner or a hosted gateway. Set the endpoint
 to the server's `/v1` base URL and the model to the served model name.
 
-**Local on a laptop (Ollama)** — cross-platform, CUDA and Apple-Metal:
+**Local on a laptop (Ollama)**, on CUDA or Apple Metal:
 
 ```bash
 ollama serve
@@ -99,23 +106,23 @@ ollama pull nomic-embed-text
 - LLM Endpoint: `http://localhost:11434/v1`, LLM Model: `llama3.1`
 - Embedding Endpoint: `http://localhost:11434/v1`, Embedding Model: `nomic-embed-text`
 
-**Linux + NVIDIA, or corpus-scale batch (vLLM)** — high throughput:
+**Linux with NVIDIA, or large batch runs (vLLM)**:
 
 ```bash
 vllm serve mistralai/Mistral-7B-Instruct-v0.3   # serves an OpenAI API on :8000
 ```
 - LLM Endpoint: `http://localhost:8000/v1`, LLM Model: `mistralai/Mistral-7B-Instruct-v0.3`
 
-**Local embeddings on Apple Silicon / NVIDIA** — with no embedding endpoint set, `sentence-transformers` runs in-process and `EmbeddingConfig.device` (`auto` by default) picks the device: CUDA if present, else Apple Metal (MPS), else CPU. Set it explicitly (`cpu`, `cuda`, `cuda:0`, `mps`) to override.
+**Local embeddings on Apple Silicon or NVIDIA**: with no embedding endpoint set, `sentence-transformers` runs in-process and `EmbeddingConfig.device` (`auto` by default) picks the device: CUDA if present, else Apple Metal (MPS), else CPU. Set it explicitly (`cpu`, `cuda`, `cuda:0`, `mps`) to override.
 
-**Hosted API** — set the endpoint to the provider's `/v1` base URL and put the
+**Hosted API**: set the endpoint to the provider's `/v1` base URL and put the
 key in the token field. Leaving the endpoint blank uses in-process
 `sentence-transformers` for embeddings and a local `transformers` pipeline for
 generation, no server required.
 
-Endpoints must be `https`, except `http` is allowed for `localhost` — which is
-exactly where Ollama (`:11434`) and vLLM (`:8000`) listen, so the local token is
-never sent in cleartext. `~/.docai/config.json` is written `0600`, and a token
+Endpoints must be `https`, except `http` is allowed for `localhost`. Ollama
+(`:11434`) and vLLM (`:8000`) listen there, so a token is not sent in cleartext
+over the network. `~/.docai/config.json` is written `0600`, and a token
 picked up from the environment is not persisted to it.
 
 Environment variables:
@@ -129,11 +136,18 @@ Build:
 docker build -t docai-toolkit .
 ```
 
-Run (GUI requires X/Wayland forwarding; for headless tasks, override CMD):
+The default command starts the GUI, which needs X11 forwarding. For headless
+tasks, override the command. The image installs `requirements.txt` and copies
+the source to `/app`. It does not install the package, so the `docai-*` console
+scripts are not on the `PATH`. Use `python -m` instead. This classifies the
+current directory, mounted read-only at `/data`, and prints the counts:
+
 ```bash
-docker run --rm -v $PWD:/data docai-toolkit python -m pytest -q
-# or override to run OCR in batch using the library CLI you add
+docker run --rm -v "$PWD:/data:ro" docai-toolkit python -m docai_toolkit.classify /data
 ```
+
+The image does not include `pytest`. Run the tests outside the container, as
+shown in [Run the tests](#run-the-tests).
 
 macOS GUI via XQuartz:
 1) Install/start XQuartz (`brew install --cask xquartz`; enable “Allow connections from network clients” in prefs and restart).
@@ -147,15 +161,22 @@ docker run --rm -it \
 ```
 For day-to-day use, running natively is simpler; use the container when you need an isolated, reproducible environment.
 
-## Tests
+## Run the tests
 
-Basic round-trip test for the viewer’s PDF writer:
+Install the package with the `dev` extra, then run `pytest`. CI runs the same
+commands on Python 3.11, 3.12, 3.13 and 3.14 with the `tesseract-ocr` and
+`poppler-utils` system packages installed.
 
 ```bash
-pytest
+pip install -e ".[dev]"
+python -m pytest -q
 ```
 
-`reportlab` must be installed for the test to run.
+The tests cover classification, config loading, device selection, the HTTP
+client, ingestion, the viewer's PDF writer, index building and the remote OCR
+and embedding clients. Tests that need `langchain` are skipped when it is not
+installed. Some classification tests expect the `file` command or
+`python-magic` to be available.
 
 ## OCR + RAG (docai_toolkit/)
 
@@ -209,50 +230,34 @@ print(chat_over_corpus(
 PY
 ```
 
-## Case Study
+## Background
 
-This toolkit was architected as part of a consulting engagement to solve common document-centric workflow challenges: extraction, segmentation, text cleaning, OCR, and embedding preparation for AI models.
+The toolkit came out of consulting work on document pipelines. See
+[Beyond Ctrl+F: Use LLMs for PDF Analysis](https://www.novatechflow.com/2024/05/beyond-ctrlf-use-llms-for-pdf-analysis.html).
 
-**Background:** [Beyond Ctrl+F: Use LLMs for PDF Analysis](https://www.novatechflow.com/2024/05/beyond-ctrlf-use-llms-for-pdf-analysis.html)
+What it does:
 
-### The Problem
+- Load PDFs: the viewer reads PDF text with `pypdf`, and OCR turns PDFs into Markdown.
+- OCR: local Tesseract, or a custom OCR endpoint that takes the raw PDF.
+- Triage: `docai-classify` sorts a file tree into documents, non-documents and quarantine.
+- Chunking: Markdown is split with `RecursiveCharacterTextSplitter` (`chunk_size` and `chunk_overlap` are parameters).
+- Embeddings and search: chunks are embedded locally with `sentence-transformers` or through an OpenAI-compatible endpoint, and stored in a FAISS index.
+- Chat: retrieval over the index plus generation through an OpenAI-compatible endpoint or a local `transformers` pipeline.
 
-Teams building RAG pipelines or document analytics typically stitch together custom scripts, ad-hoc processing, or partial library support, resulting in inconsistent, brittle pipelines.
-
-### The Solution
-
-docAI provides a clean, modular toolkit for building AI-ready document processing flows:
-
-- **Document loading**: PDF, DOCX, Markdown
-- **Page and text splitting**: configurable chunking
-- **Preprocessing**: cleaning, normalization
-- **OCR**: local (Tesseract) or remote (Hugging Face/custom endpoints)
-- **Embedding preparation**: ready for FAISS, vector DBs, or ML pipelines
-
-### Example Workflow
 ```
-Source documents (PDF, DOCX, MD)
-        ↓
-   docAI splits & preprocesses
-        ↓
-   Cleaned chunks → embedding model
-        ↓
-   Indexed for search / RAG / analytics
+PDFs
+  ↓  OCR (Tesseract or custom endpoint)
+Markdown
+  ↓  chunking
+Chunks
+  ↓  embeddings
+FAISS index
+  ↓  retrieval and generation
+Answers
 ```
 
-### Benefits
-
-- Reduces bespoke glue code
-- Predictable interface for common document tasks
-- Easy integration into production systems
-
----
-
-**Need help building document pipelines or RAG systems?**
-
-→ [Consulting Services](https://www.novatechflow.com/p/consulting-services.html)  
-→ [Book a call](https://cal.com/alexanderalten)
-
+For help with document pipelines or RAG systems, see
+[Consulting Services](https://www.novatechflow.com/p/consulting-services.html).
 
 ## License
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "docai-toolkit"
 version = "0.2.0"
-description = "Local OCR + Markdown + RAG toolkit with optional Hugging Face endpoints."
+description = "Local OCR, Markdown and RAG toolkit with optional OpenAI-compatible and custom OCR endpoints."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "CC-BY-NC-SA-4.0"
@@ -17,6 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "pypdf>=6.0,<7",
@@ -53,7 +54,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/2pk03/docai"
+Homepage = "https://github.com/novatechflow/docai"
 
 [tool.setuptools]
 py-modules = ["pdf_viewer_app"]
