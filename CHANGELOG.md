@@ -3,6 +3,7 @@
 ## Unreleased
 ### Fixed
 - `docai-ingest` names each Markdown file `<pdf name>-<hash>.md`, where the hash comes from the full PDF path. Two PDFs with the same file name in different folders were written to the same `<pdf name>.md`, so the second one was skipped and never indexed. Markdown written by earlier versions is not reused, so the first run after upgrading OCRs every PDF again.
+- `docai-classify` keeps `.txt` and `.md` files when neither `python-magic` nor the `file` command is available. The built-in signature sniff has no signature for plain text, so these files were quarantined as `content type undetermined`. A `.txt` or `.md` file with no NUL bytes in its first 8 KB is now treated as `text/plain`.
 
 ## 0.2.0 - 2026-09-06
 ### Changed
