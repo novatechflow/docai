@@ -1,4 +1,0 @@
-[console_scripts]
-docai-classify = docai_toolkit.classify:main
-docai-ingest = docai_toolkit.ingest:main
-docai-viewer = pdf_viewer_app:main

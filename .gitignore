@@ -17,3 +17,8 @@ venv/
 
 # Agent tooling
 .claude/
+
+# Build output
+*.egg-info/
+build/
+dist/

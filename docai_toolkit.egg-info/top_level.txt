@@ -1,2 +1,0 @@
-docai_toolkit
-pdf_viewer_app
