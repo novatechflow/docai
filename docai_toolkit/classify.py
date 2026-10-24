@@ -176,6 +176,8 @@ def classify_file(path: Path, detect_mime: MimeDetector) -> FileReport:
         return FileReport(str(path), size, extension, None, Verdict.NOT_DOCUMENT, "extension not a document type")
 
     mime = detect_mime(path)
+    if mime is None and extension in PLAIN_TEXT_EXTENSIONS and _looks_like_text(path):
+        mime = "text/plain"
     if mime is None:
         return FileReport(str(path), size, extension, None, Verdict.QUARANTINE, "content type undetermined")
 

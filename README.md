@@ -60,8 +60,11 @@ docai-classify /path/to/tree --manifest manifest.json --doc-list docs.txt
 
 Kept types: `.pdf .doc .docx .rtf .odt .txt .md`. Content detection uses
 `python-magic` (`pip install ".[classify]"`) when available, then the system
-`file` command, then a built-in signature sniff — so it runs with no extra deps
-but is more precise with libmagic installed.
+`file` command, then a built-in signature sniff. The signature sniff knows PDF,
+RTF, legacy `.doc` and zip-based `.docx`/`.odt`. When no detector identifies a
+`.txt` or `.md` file, it is kept as `text/plain` if it has no NUL bytes in its
+first 8 KB. Without `python-magic` or `file`, other mismatches are reported as
+`content type undetermined` instead of `extension and content type disagree`.
 
 ### Ingesting a corpus (OCR + index at scale)
 

@@ -5,6 +5,7 @@ import pytest
 
 from docai_toolkit.classify import (
     Verdict,
+    _detect_with_signatures,
     classify_file,
     classify_tree,
     default_mime_detector,
@@ -140,3 +141,21 @@ def test_binary_renamed_to_txt_is_quarantined(tmp_path, detector):
     p = tmp_path / "payload.txt"
     p.write_bytes(b"MZ\x90\x00\x03\x00\x00\x00" + b"\x00" * 64)
     assert classify_file(p, detector).verdict is Verdict.QUARANTINE
+
+
+def test_text_and_markdown_kept_with_signature_sniff_only(tmp_path):
+    detector = _detect_with_signatures()
+    txt = tmp_path / "notes.txt"
+    txt.write_text("hello")
+    md = tmp_path / "readme.md"
+    md.write_text("# hi")
+    assert classify_file(txt, detector).verdict is Verdict.DOCUMENT
+    assert classify_file(md, detector).verdict is Verdict.DOCUMENT
+
+
+def test_binary_text_file_quarantined_with_signature_sniff_only(tmp_path):
+    p = tmp_path / "notes.txt"
+    p.write_bytes(b"\x00\x01\x02binary")
+    report = classify_file(p, _detect_with_signatures())
+    assert report.verdict is Verdict.QUARANTINE
+    assert report.reason == "content type undetermined"
