@@ -1,9 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 - 2026-10-24
 ### Fixed
 - `docai-ingest` names each Markdown file `<pdf name>-<hash>.md`, where the hash comes from the full PDF path. Two PDFs with the same file name in different folders were written to the same `<pdf name>.md`, so the second one was skipped and never indexed. Markdown written by earlier versions is not reused, so the first run after upgrading OCRs every PDF again.
 - `docai-classify` keeps `.txt` and `.md` files when neither `python-magic` nor the `file` command is available. The built-in signature sniff has no signature for plain text, so these files were quarantined as `content type undetermined`. A `.txt` or `.md` file with no NUL bytes in its first 8 KB is now treated as `text/plain`.
+
+### Upgrade notes
+- The first run of `docai-ingest` after upgrading OCRs every PDF again, because Markdown files written by 0.2.0 under the old `<pdf name>.md` name are not reused.
+
+### Documentation
+- The README and package metadata match the code. The project URL points to `github.com/novatechflow/docai`, the description names OpenAI-compatible and custom OCR endpoints, and the classifiers list Python 3.14, which CI tests and the Docker image uses.
+- The README shows how to keep only the PDFs from the `docai-classify` `--doc-list` before passing it to `docai-ingest`.
+- The README Docker example runs `docai_toolkit.classify` instead of `pytest`, which the image does not include. The test section lists the commands CI runs.
+- The case study section that described DOCX loading and text cleaning was removed, because the code does neither.
 
 ## 0.2.0 - 2026-09-06
 ### Changed
