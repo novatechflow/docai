@@ -8,6 +8,7 @@ saving the index and a ledger periodically so a re-run resumes where it stopped.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -60,8 +61,13 @@ def _write_markdown(md_path: Path, pages) -> None:
     md_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
 
 
+def _markdown_path(pdf_path: Path, output_dir: Path) -> Path:
+    digest = hashlib.sha256(str(pdf_path.resolve()).encode("utf-8")).hexdigest()[:12]
+    return output_dir / f"{pdf_path.stem}-{digest}.md"
+
+
 def _ocr_one(pdf_path: Path, output_dir: Path, client: OcrClient, skip_existing: bool) -> OcrOutcome:
-    md_path = output_dir / f"{pdf_path.stem}.md"
+    md_path = _markdown_path(pdf_path, output_dir)
     if skip_existing and md_path.exists():
         return OcrOutcome(source=str(pdf_path), markdown=str(md_path), skipped=True)
     try:

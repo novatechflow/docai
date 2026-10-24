@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Fixed
+- `docai-ingest` names each Markdown file `<pdf name>-<hash>.md`, where the hash comes from the full PDF path. Two PDFs with the same file name in different folders were written to the same `<pdf name>.md`, so the second one was skipped and never indexed. Markdown written by earlier versions is not reused, so the first run after upgrading OCRs every PDF again.
+
 ## 0.2.0 - 2026-09-06
 ### Changed
 - Remote generation and embeddings now speak the OpenAI REST API (`/v1/chat/completions`, `/v1/embeddings`) instead of the Hugging Face payload format, so any OpenAI-compatible server — Ollama, vLLM, llama.cpp, TGI, or a hosted gateway — works through one client. Endpoints are the server's `/v1` base URL; the model field is the served model name.
