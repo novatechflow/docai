@@ -237,6 +237,8 @@ PY
 
 The toolkit came out of consulting work on document pipelines. See
 [Beyond Ctrl+F: Use LLMs for PDF Analysis](https://www.novatechflow.com/2024/05/beyond-ctrlf-use-llms-for-pdf-analysis.html).
+Also see
+[Chatting with your PDFs does not need a cloud API, just Ollama](https://www.novatechflow.com/2026/11/chat-with-pdfs-locally-using-ocr-rag.html).
 
 What it does:
 
